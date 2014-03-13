@@ -72,6 +72,9 @@
                 this.getTags = function() {
                     return _this.tagsArray;
                 };
+                this.getTagsId = function() {
+                    return _this.idsArray;
+                };
                 this.getTagsContent = function() {
                     return _this.popoverArray;
                 };
@@ -147,7 +150,6 @@
                         }
                         associatedContent = _this.definePopover(tag);
                         _this.popoverArray.push(associatedContent || null);
-                        console.log("@addTag tag, tagId ", tag, tagId);
                         _this.tagsArray.push(tag);
                         _this.idsArray.push(tagId);
                         _this.afterAddingTag(tag);
@@ -190,9 +192,7 @@
                         if (_this.suggestedIndex !== -1) {
                             tag = _this.suggestionList[_this.suggestedIndex];
                             tagId = _this.suggestionIdList[_this.suggestedIndex];
-                            console.log("@keyDownHandler1 tag, tagId ", tag, " , ", tagId);
                         }
-                        console.log("@keyDownHandler2 tag, tagId ", tag, " , ", tagId);
                         _this.addTag(tag, tagId);
                         e.target.value = "";
                         _this.renderTags();
@@ -256,7 +256,6 @@
                         suggestionVal = _this.caseInsensitive ? suggestion.substring(0, str.length) : suggestion.substring(0, str.length).toLowerCase();
                         if (_this.tagsArray.indexOf(suggestion) < 0 && suggestionVal === str && (str.length > 0 || overrideLengthCheck)) {
                             _this.suggestionList.push(suggestion);
-                            console.log("@gestSuggestions @suggestionsList", _this.suggestionList);
                             return _this.suggestionIdList.push(_this.suggestionsId[i]);
                         }
                     });
@@ -283,12 +282,10 @@
                 this.suggestedClicked = function(e) {
                     var tagId;
                     tag = e.target.textContent;
-                    console.log("@suggestedClicked @suggestedIdList @suggestedIndex", _this.suggestionIdList, _this.suggestedIndex);
                     if (_this.suggestedIndex !== -1) {
                         tag = _this.suggestionList[_this.suggestedIndex];
                         tagId = _this.suggestionIdList[_this.suggestedIndex];
                     }
-                    console.log("@suggestedClicked tag, tagId ", tag, ", ", tagId);
                     _this.addTag(tag, tagId);
                     _this.input.val("");
                     _this.makeSuggestions(e, false);
@@ -351,9 +348,8 @@
                     var tagList;
                     tagList = _this.$(".tags");
                     tagList.html("");
-                    _this.input.attr("placeholder", _this.tagsArray.length === 0 ? _this.promptText : "");
+                    _this.input.attr("placeholder", _this.promptText);
                     $.each(_this.tagsArray, function(i, tag) {
-                        console.log("@renderTags i tag @idsArray[i] ", i, tag, _this.idsArray[i]);
                         tag = $(_this.formatTag(i, tag, _this.idsArray[i]));
                         $("a", tag).click(_this.removeTagClicked);
                         $("a", tag).mouseover(_this.toggleCloseColor);
@@ -411,7 +407,6 @@
                         isReadOnly = false;
                     }
                     escapedTag = tag.replace("<", "&lt;").replace(">", "&gt;");
-                    console.log("tagId ", tagId);
                     return _this.template("tag", {
                         tag: escapedTag,
                         tagId: tagId,

@@ -330,7 +330,8 @@ jQuery ->
     @renderTags = =>
       tagList = @$('.tags')
       tagList.html('')
-      @input.attr 'placeholder', (if @tagsArray.length == 0 then @promptText else '')
+      #@input.attr 'placeholder', (if @tagsArray.length == 0 then @promptText else '')
+      @input.attr 'placeholder', @promptText
       $.each @tagsArray, (i, tag) =>
         #console.log "@renderTags i tag @idsArray[i] ", i, tag, @idsArray[i]
         tag = $(@formatTag i, tag, @idsArray[i])
