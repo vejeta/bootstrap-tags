@@ -17,6 +17,7 @@ jQuery ->
     @readOnly ||= false
     @suggestOnClick ||= false
     @suggestions ||= []
+    @suggestionsId ||=[]
     @restrictTo = (if options.restrictTo? then options.restrictTo.concat @suggestions else false)
     @exclude ||= false
     @displayPopovers = (if options.popovers? then true else options.popoverData?)
@@ -54,6 +55,12 @@ jQuery ->
       tagData = $('.tag-data', @$element).html()
       @tagsArray = (if tagData? then tagData.split ',' else [])
 
+    if options.idData?
+      @idsArray = options.idData
+    else
+      idData = $('.id-data', @$element).html()
+      @idsArray = (if idData? then idData.split ',' else [])
+
     # initialize associated content array
     if options.popoverData
       @popoverArray = options.popoverData
@@ -64,6 +71,10 @@ jQuery ->
     # returns list of tags
     @getTags = =>
       @tagsArray
+
+    #return list of ids of tags
+    @getTagsId = =>
+      @idsArray
 
     @getTagsContent = =>
       @popoverArray
@@ -79,6 +90,10 @@ jQuery ->
     @getTag = (tag) =>
       index = @tagsArray.indexOf tag
       if index > -1 then @tagsArray[index] else null
+
+    @getTagId = (tag) =>
+        index = @tagsArray.indexOf tag
+        if index > 1 then @idsArray[index] else null
 
     @getTagWithContent = (tag) =>
       index = @tagsArray.indexOf tag
@@ -109,7 +124,8 @@ jQuery ->
     @removeTag = (tag) => # removes specified tag 
       if @tagsArray.indexOf(tag) > -1
         return if @beforeDeletingTag(tag) == false
-        @popoverArray.splice(@tagsArray.indexOf(tag),1)
+        @popoverArray.splice(@tagsArray.indexOf(tag), 1)
+        @idsArray.splice(@tagsArray.indexOf(tag), 1)
         @tagsArray.splice(@tagsArray.indexOf(tag), 1)
         @renderTags()
         @afterDeletingTag(tag)
@@ -118,12 +134,15 @@ jQuery ->
     # addTag adds the specified tag
     # - Helper method for keyDownHandler and suggestedClicked
     # - exposed: can be called from page javascript
-    @addTag = (tag) => 
+    @addTag = (tag, tagId) => 
       if (@restrictTo == false or @restrictTo.indexOf(tag) != -1) and @tagsArray.indexOf(tag) < 0 and tag.length > 0 and (@exclude == false || @exclude.indexOf(tag) == -1) and !@excludes(tag)
         return if @beforeAddingTag(tag) == false
         associatedContent = @definePopover(tag)
         @popoverArray.push associatedContent or null
+
+        #console.log "@addTag tag, tagId ", tag, tagId
         @tagsArray.push tag
+        @idsArray.push tagId
         @afterAddingTag(tag)
         @renderTags()
       @
@@ -168,7 +187,11 @@ jQuery ->
           tag = e.target.value
           if @suggestedIndex != -1
             tag = @suggestionList[@suggestedIndex]
-          @addTag tag
+            tagId = @suggestionIdList[@suggestedIndex]
+            #console.log "@keyDownHandler1 tag, tagId ", tag , " , ",  tagId
+
+          #console.log "@keyDownHandler2 tag, tagId ", tag , " , ",  tagId
+          @addTag tag, tagId
           e.target.value = ''
           @renderTags()
           @hideSuggestions()
@@ -204,10 +227,13 @@ jQuery ->
     @getSuggestions = (str, overrideLengthCheck) ->
       str = str.toLowerCase() if @caseInsensitive
       @suggestionList = []
+      @suggestionIdList = []
       $.each @suggestions, (i, suggestion) =>
         suggestionVal = if @caseInsensitive then suggestion.substring(0, str.length) else suggestion.substring(0, str.length).toLowerCase()
         if @tagsArray.indexOf(suggestion) < 0 and suggestionVal == str and (str.length > 0 or overrideLengthCheck)
           @suggestionList.push suggestion
+          #console.log "@gestSuggestions @suggestionsList", @suggestionList
+          @suggestionIdList.push @suggestionsId[i]
       @suggestionList
 
     # makeSuggestions creates auto suggestions that match the value in the input
@@ -229,9 +255,13 @@ jQuery ->
     # triggered when user clicked on a suggestion
     @suggestedClicked = (e) =>
       tag = e.target.textContent
+      #console.log "@suggestedClicked @suggestedIdList @suggestedIndex", @suggestionIdList, @suggestedIndex
       if @suggestedIndex != -1
         tag = @suggestionList[@suggestedIndex]
-      @addTag tag
+        tagId = @suggestionIdList[@suggestedIndex]
+
+      #console.log "@suggestedClicked tag, tagId ", tag, ", ", tagId
+      @addTag tag, tagId
       @input.val ''
       @makeSuggestions e, false
       @input.focus() # return focus to input so user can continue typing
@@ -302,7 +332,8 @@ jQuery ->
       tagList.html('')
       @input.attr 'placeholder', (if @tagsArray.length == 0 then @promptText else '')
       $.each @tagsArray, (i, tag) =>
-        tag = $(@formatTag i, tag)
+        #console.log "@renderTags i tag @idsArray[i] ", i, tag, @idsArray[i]
+        tag = $(@formatTag i, tag, @idsArray[i])
         $('a', tag).click @removeTagClicked
         $('a', tag).mouseover @toggleCloseColor
         $('a', tag).mouseout @toggleCloseColor
@@ -314,7 +345,7 @@ jQuery ->
       tagList = @$('.tags')
       tagList.html (if @tagsArray.length == 0 then @readOnlyEmptyMessage else '')
       $.each @tagsArray, (i, tag) =>
-        tag = $(@formatTag i, tag, true)
+        tag = $(@formatTag i, tag, @idsArray[i], true)
         @initializePopoverFor(tag, @tagsArray[i], @popoverArray[i]) if @displayPopovers
         tagList.append tag
 
@@ -346,10 +377,12 @@ jQuery ->
       tagAnchor.css opacity:opacity 
 
     # formatTag spits out the html for a tag (with or without it's popovers)
-    @formatTag = (i, tag, isReadOnly = false) =>
+    @formatTag = (i, tag, tagId, isReadOnly = false) =>
       escapedTag = tag.replace("<",'&lt;').replace(">",'&gt;')
+      #console.log "tagId ", tagId
       @template "tag",
         tag: escapedTag
+        tagId: tagId
         tagClass: @tagClass
         isPopover: @displayPopovers
         isReadOnly: isReadOnly

@@ -9,7 +9,7 @@
         window.Tags || (window.Tags = {});
         jQuery(function() {
             $.tags = function(element, options) {
-                var key, tag, tagData, value, _i, _len, _ref, _this = this;
+                var idData, key, tag, tagData, value, _i, _len, _ref, _this = this;
                 if (options == null) {
                     options = {};
                 }
@@ -19,7 +19,9 @@
                 }
                 this.bootstrapVersion || (this.bootstrapVersion = "3");
                 this.readOnly || (this.readOnly = false);
+                this.suggestOnClick || (this.suggestOnClick = false);
                 this.suggestions || (this.suggestions = []);
+                this.suggestionsId || (this.suggestionsId = []);
                 this.restrictTo = options.restrictTo != null ? options.restrictTo.concat(this.suggestions) : false;
                 this.exclude || (this.exclude = false);
                 this.displayPopovers = options.popovers != null ? true : options.popoverData != null;
@@ -50,6 +52,12 @@
                 } else {
                     tagData = $(".tag-data", this.$element).html();
                     this.tagsArray = tagData != null ? tagData.split(",") : [];
+                }
+                if (options.idData != null) {
+                    this.idsArray = options.idData;
+                } else {
+                    idData = $(".id-data", this.$element).html();
+                    this.idsArray = idData != null ? idData.split(",") : [];
                 }
                 if (options.popoverData) {
                     this.popoverArray = options.popoverData;
@@ -87,6 +95,15 @@
                         return null;
                     }
                 };
+                this.getTagId = function(tag) {
+                    var index;
+                    index = _this.tagsArray.indexOf(tag);
+                    if (index > 1) {
+                        return _this.idsArray[index];
+                    } else {
+                        return null;
+                    }
+                };
                 this.getTagWithContent = function(tag) {
                     var index;
                     index = _this.tagsArray.indexOf(tag);
@@ -115,13 +132,14 @@
                             return;
                         }
                         _this.popoverArray.splice(_this.tagsArray.indexOf(tag), 1);
+                        _this.idsArray.splice(_this.tagsArray.indexOf(tag), 1);
                         _this.tagsArray.splice(_this.tagsArray.indexOf(tag), 1);
                         _this.renderTags();
                         _this.afterDeletingTag(tag);
                     }
                     return _this;
                 };
-                this.addTag = function(tag) {
+                this.addTag = function(tag, tagId) {
                     var associatedContent;
                     if ((_this.restrictTo === false || _this.restrictTo.indexOf(tag) !== -1) && _this.tagsArray.indexOf(tag) < 0 && tag.length > 0 && (_this.exclude === false || _this.exclude.indexOf(tag) === -1) && !_this.excludes(tag)) {
                         if (_this.beforeAddingTag(tag) === false) {
@@ -129,7 +147,9 @@
                         }
                         associatedContent = _this.definePopover(tag);
                         _this.popoverArray.push(associatedContent || null);
+                        console.log("@addTag tag, tagId ", tag, tagId);
                         _this.tagsArray.push(tag);
+                        _this.idsArray.push(tagId);
                         _this.afterAddingTag(tag);
                         _this.renderTags();
                     }
@@ -157,8 +177,11 @@
                     _this.renderTags();
                     return _this;
                 };
+                this.clickHandler = function(e) {
+                    return _this.makeSuggestions(e, true);
+                };
                 this.keyDownHandler = function(e) {
-                    var k, numSuggestions;
+                    var k, numSuggestions, tagId;
                     k = e.keyCode != null ? e.keyCode : e.which;
                     switch (k) {
                       case 13:
@@ -166,8 +189,11 @@
                         tag = e.target.value;
                         if (_this.suggestedIndex !== -1) {
                             tag = _this.suggestionList[_this.suggestedIndex];
+                            tagId = _this.suggestionIdList[_this.suggestedIndex];
+                            console.log("@keyDownHandler1 tag, tagId ", tag, " , ", tagId);
                         }
-                        _this.addTag(tag);
+                        console.log("@keyDownHandler2 tag, tagId ", tag, " , ", tagId);
+                        _this.addTag(tag, tagId);
                         e.target.value = "";
                         _this.renderTags();
                         return _this.hideSuggestions();
@@ -224,11 +250,14 @@
                         str = str.toLowerCase();
                     }
                     this.suggestionList = [];
+                    this.suggestionIdList = [];
                     $.each(this.suggestions, function(i, suggestion) {
                         var suggestionVal;
                         suggestionVal = _this.caseInsensitive ? suggestion.substring(0, str.length) : suggestion.substring(0, str.length).toLowerCase();
                         if (_this.tagsArray.indexOf(suggestion) < 0 && suggestionVal === str && (str.length > 0 || overrideLengthCheck)) {
-                            return _this.suggestionList.push(suggestion);
+                            _this.suggestionList.push(suggestion);
+                            console.log("@gestSuggestions @suggestionsList", _this.suggestionList);
+                            return _this.suggestionIdList.push(_this.suggestionsId[i]);
                         }
                     });
                     return this.suggestionList;
@@ -252,11 +281,15 @@
                     }
                 };
                 this.suggestedClicked = function(e) {
+                    var tagId;
                     tag = e.target.textContent;
+                    console.log("@suggestedClicked @suggestedIdList @suggestedIndex", _this.suggestionIdList, _this.suggestedIndex);
                     if (_this.suggestedIndex !== -1) {
                         tag = _this.suggestionList[_this.suggestedIndex];
+                        tagId = _this.suggestionIdList[_this.suggestedIndex];
                     }
-                    _this.addTag(tag);
+                    console.log("@suggestedClicked tag, tagId ", tag, ", ", tagId);
+                    _this.addTag(tag, tagId);
                     _this.input.val("");
                     _this.makeSuggestions(e, false);
                     _this.input.focus();
@@ -320,7 +353,8 @@
                     tagList.html("");
                     _this.input.attr("placeholder", _this.tagsArray.length === 0 ? _this.promptText : "");
                     $.each(_this.tagsArray, function(i, tag) {
-                        tag = $(_this.formatTag(i, tag));
+                        console.log("@renderTags i tag @idsArray[i] ", i, tag, _this.idsArray[i]);
+                        tag = $(_this.formatTag(i, tag, _this.idsArray[i]));
                         $("a", tag).click(_this.removeTagClicked);
                         $("a", tag).mouseover(_this.toggleCloseColor);
                         $("a", tag).mouseout(_this.toggleCloseColor);
@@ -336,7 +370,7 @@
                     tagList = _this.$(".tags");
                     tagList.html(_this.tagsArray.length === 0 ? _this.readOnlyEmptyMessage : "");
                     return $.each(_this.tagsArray, function(i, tag) {
-                        tag = $(_this.formatTag(i, tag, true));
+                        tag = $(_this.formatTag(i, tag, _this.idsArray[i], true));
                         if (_this.displayPopovers) {
                             _this.initializePopoverFor(tag, _this.tagsArray[i], _this.popoverArray[i]);
                         }
@@ -371,14 +405,16 @@
                         opacity: opacity
                     });
                 };
-                this.formatTag = function(i, tag, isReadOnly) {
+                this.formatTag = function(i, tag, tagId, isReadOnly) {
                     var escapedTag;
                     if (isReadOnly == null) {
                         isReadOnly = false;
                     }
                     escapedTag = tag.replace("<", "&lt;").replace(">", "&gt;");
+                    console.log("tagId ", tagId);
                     return _this.template("tag", {
                         tag: escapedTag,
+                        tagId: tagId,
                         tagClass: _this.tagClass,
                         isPopover: _this.displayPopovers,
                         isReadOnly: isReadOnly,
@@ -422,6 +458,9 @@
                         this.input = $(this.template("input", {
                             tagSize: this.tagSize
                         }));
+                        if (this.suggestOnClick) {
+                            this.input.click(this.clickHandler);
+                        }
                         this.input.keydown(this.keyDownHandler);
                         this.input.keyup(this.keyUpHandler);
                         this.$element.append(this.input);
@@ -529,7 +568,7 @@
             if (options == null) {
                 options = {};
             }
-            return "<div class='tag label " + options.tagClass + " " + options.tagSize + "' " + (options.isPopover ? "rel='popover'" : "") + ">    <span>" + Tags.Helpers.addPadding(options.tag, 2, options.isReadOnly) + "</span>    " + (options.isReadOnly ? "" : "<a><i class='remove glyphicon glyphicon-remove-sign glyphicon-white' /></a>") + "  </div>";
+            return "<div class='tag label " + options.tagClass + " " + options.tagSize + "' " + (options.isPopover ? "rel='popover'" : "") + " id='" + options.tagId + "'>    <span>" + Tags.Helpers.addPadding(options.tag, 2, options.isReadOnly) + "</span>    " + (options.isReadOnly ? "" : "<a><i class='remove glyphicon glyphicon-remove-sign glyphicon-white' /></a>") + "  </div>";
         };
     }).call(this);
     (function() {
